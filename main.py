@@ -55,7 +55,7 @@ class BerlinTerminMachen:
         
         self.artifact_prefix = f"{self.directory}/{self.timestamp}"
 
-        self.screenshot_counter = 0
+        self.artifact_counter = 0
 
     def __del__(self):
         self._take_screenshot("final")
@@ -168,6 +168,19 @@ class BerlinTerminMachen:
     def click_next_button_to_move_date_selection(self):
         self._click_application_form_proceed_button()
 
+    def wait_until_date_selection_is_visible(self):
+        self._wait_until(
+            EC.visibility_of_element_located((By.XPATH, "//legend[normalize-space() = 'Appointment selection']")),
+            "date_selection_is_visible"
+        )
+        raise Exception("Available date not found")
+    
+    def save_source_code_of_date_selection_page(self):
+        self._save_source_code_to_file("data_selection_source_code")
+    
+    def rename_artifact_folder_as_found(self):
+        os.rename(self.directory, f"{self.directory}_found")
+
     def _wait_until(self, method: Callable[[D], Union[Literal[False], T]], description: str):
         try:
             self.wait.until(method)
@@ -180,8 +193,8 @@ class BerlinTerminMachen:
             self._take_screenshot(message)
 
     def _take_screenshot(self, description: str):
-        self.driver.save_screenshot(f"{self.artifact_prefix}_{self.screenshot_counter}_{description}.png")
-        self.screenshot_counter += 1
+        filename = self._get_artifact_filename(f"{description}.png")
+        self.driver.save_screenshot(filename)
 
     def _click_to_element(self, element: WebElement):
         self.actions.move_to_element(element).click().perform()
@@ -195,6 +208,17 @@ class BerlinTerminMachen:
     def _click_application_form_proceed_button(self):
         button = self.driver.find_element(By.ID, "applicationForm:managedForm:proceed")
         self._click_to_element(button)
+
+    def _save_source_code_to_file(self, description: str):
+        source_code = self.driver.page_source
+        filename = self._get_artifact_filename(f"{description}.html")
+        with open(filename, 'w', encoding='utf-8') as file:
+            file.write(source_code)
+    
+    def _get_artifact_filename(self, filename: str):
+        filename = f"{self.artifact_prefix}_{self.artifact_counter}_{filename}"
+        self.artifact_counter += 1
+        return filename
     
 app = BerlinTerminMachen()
 app.visit_appointment_page()
@@ -227,3 +251,7 @@ app.click_to_the_service()
 
 app.wait_until_loading_is_done()
 app.click_next_button_to_move_date_selection()
+
+app.wait_until_date_selection_is_visible()
+app.save_source_code_of_date_selection_page()
+app.rename_artifact_folder_as_found()
